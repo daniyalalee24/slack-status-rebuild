@@ -1,6 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import EmojiPicker from "emoji-picker-react";
 
+// Authentic Slack Default Speech Bubble SVG
+const DefaultStatusIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M10 2.5C5.85786 2.5 2.5 5.61929 2.5 9.5C2.5 11.4553 3.42436 13.237 4.92004 14.5428L4.01501 17.0315C3.89965 17.3488 4.21855 17.6253 4.52187 17.4727L7.6166 15.9152C8.36979 16.2917 9.17182 16.5 10 16.5C14.1421 16.5 17.5 13.5 17.5 9.5C17.5 5.61929 14.1421 2.5 10 2.5Z"
+      fill="#D1D2D3"
+    />
+  </svg>
+);
+
 export default function StatusModal({
   activeStatus,
   onSave,
@@ -11,7 +27,7 @@ export default function StatusModal({
     activeStatus ? activeStatus.text : "",
   );
   const [statusEmoji, setStatusEmoji] = useState(
-    activeStatus ? activeStatus.emoji : "💬",
+    activeStatus ? activeStatus.emoji : "default",
   );
   const [duration, setDuration] = useState(
     activeStatus ? activeStatus.duration : "Today",
@@ -19,7 +35,7 @@ export default function StatusModal({
   const [pauseNotifications, setPauseNotifications] = useState(false);
 
   const [isEditing, setIsEditing] = useState(!!activeStatus);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // New state for emoji picker
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const [customStart, setCustomStart] = useState({ date: "Today", time: "" });
   const [customEnd, setCustomEnd] = useState({ date: "Tomorrow", time: "" });
@@ -59,10 +75,9 @@ export default function StatusModal({
   ];
 
   const inputRef = useRef(null);
-  const pickerRef = useRef(null); // Ref for clicking outside the emoji picker
-  const isPickerOpen = useRef(false); // Track picker state for Escape key logic
+  const pickerRef = useRef(null);
+  const isPickerOpen = useRef(false);
 
-  // Update ref when state changes
   useEffect(() => {
     isPickerOpen.current = showEmojiPicker;
   }, [showEmojiPicker]);
@@ -73,14 +88,13 @@ export default function StatusModal({
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         if (isPickerOpen.current) {
-          setShowEmojiPicker(false); // Close picker if open
+          setShowEmojiPicker(false);
         } else {
-          onClose(); // Otherwise close modal
+          onClose();
         }
       }
     };
 
-    // Click outside handler for Emoji Picker
     const handleClickOutside = (e) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target)) {
         setShowEmojiPicker(false);
@@ -198,7 +212,9 @@ export default function StatusModal({
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-[#1264A3] hover:text-white rounded-md focus:bg-[#1264A3] focus:outline-none group transition-colors"
       >
         <span className="flex items-center gap-3">
-          <span className="text-[18px]">{item.emoji}</span>
+          <span className="text-[18px] flex items-center justify-center w-5 h-5">
+            {item.emoji === "default" ? <DefaultStatusIcon /> : item.emoji}
+          </span>
           <span className="font-bold">
             {item.text}{" "}
             <span className="font-normal opacity-70 ml-1">
@@ -274,10 +290,14 @@ export default function StatusModal({
     duration === activeStatus.duration;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={onClose} // Closes modal when clicking the dark background
+    >
       <div
         className="bg-[#222529] text-gray-200 w-full max-w-[520px] rounded-xl shadow-2xl border border-gray-700 flex flex-col"
         role="dialog"
+        onClick={(e) => e.stopPropagation()} // Prevents clicks inside modal from closing it
       >
         <div className="flex justify-between items-center p-5 pb-4 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white">Set a status</h2>
@@ -292,14 +312,17 @@ export default function StatusModal({
         <form onSubmit={handleSubmit} className="flex flex-col max-h-[85vh]">
           <div className="px-5 pt-5 pb-3">
             <div className="flex items-center gap-2 bg-[#1A1D21] border border-gray-600 focus-within:border-[#1264A3] focus-within:ring-1 focus-within:ring-[#1264A3] rounded-lg p-1.5 transition-all">
-              {/* EMOJI PICKER CONTAINER */}
               <div className="relative" ref={pickerRef}>
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className="w-10 h-10 flex items-center justify-center hover:bg-gray-700 rounded text-xl focus:outline-none focus:ring-2 focus:ring-[#1264A3] transition-colors"
                 >
-                  {statusEmoji}
+                  {statusEmoji === "default" ? (
+                    <DefaultStatusIcon />
+                  ) : (
+                    statusEmoji
+                  )}
                 </button>
 
                 {showEmojiPicker && (
@@ -309,13 +332,12 @@ export default function StatusModal({
                       onEmojiClick={(emojiData) => {
                         setStatusEmoji(emojiData.emoji);
                         setShowEmojiPicker(false);
-                        inputRef.current?.focus(); // Return focus to input after picking
+                        inputRef.current?.focus();
                       }}
                     />
                   </div>
                 )}
               </div>
-              {/* END EMOJI PICKER */}
 
               <input
                 ref={inputRef}
@@ -330,7 +352,10 @@ export default function StatusModal({
                 <button
                   type="button"
                   onClick={() => {
+                    // Full reset when clicking the 'X' in the input
                     setStatusText("");
+                    setStatusEmoji("default");
+                    setDuration("Today");
                     if (!isEditing) inputRef.current?.focus();
                   }}
                   className="bg-gray-600 hover:bg-gray-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-1"
