@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import EmojiPicker from "emoji-picker-react";
 
 export default function StatusModal({
   activeStatus,
@@ -6,7 +7,6 @@ export default function StatusModal({
   onClear,
   onClose,
 }) {
-  // Initialize state using the activeStatus if it exists
   const [statusText, setStatusText] = useState(
     activeStatus ? activeStatus.text : "",
   );
@@ -18,8 +18,8 @@ export default function StatusModal({
   );
   const [pauseNotifications, setPauseNotifications] = useState(false);
 
-  // If there's an active status, jump straight into Edit View
   const [isEditing, setIsEditing] = useState(!!activeStatus);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // New state for emoji picker
 
   const [customStart, setCustomStart] = useState({ date: "Today", time: "" });
   const [customEnd, setCustomEnd] = useState({ date: "Tomorrow", time: "" });
@@ -59,14 +59,41 @@ export default function StatusModal({
   ];
 
   const inputRef = useRef(null);
+  const pickerRef = useRef(null); // Ref for clicking outside the emoji picker
+  const isPickerOpen = useRef(false); // Track picker state for Escape key logic
+
+  // Update ref when state changes
+  useEffect(() => {
+    isPickerOpen.current = showEmojiPicker;
+  }, [showEmojiPicker]);
 
   useEffect(() => {
     inputRef.current?.focus();
+
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (isPickerOpen.current) {
+          setShowEmojiPicker(false); // Close picker if open
+        } else {
+          onClose(); // Otherwise close modal
+        }
+      }
     };
+
+    // Click outside handler for Emoji Picker
+    const handleClickOutside = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [onClose]);
 
   const handleSubmit = (e) => {
@@ -93,7 +120,6 @@ export default function StatusModal({
       (f) => f.text === newStatus.text && f.emoji === newStatus.emoji,
     );
 
-    // Only add to Recent tab if it is a custom status AND not already a favorite
     if (!isDefault && !isFav) {
       const filteredRecents = recentStatuses.filter(
         (r) => !(r.text === newStatus.text && r.emoji === newStatus.emoji),
@@ -127,26 +153,20 @@ export default function StatusModal({
     );
 
     if (isFav) {
-      // It's currently a favorite, so we UN-STAR it.
-      // Remove from favorites
       const newFavs = favorites.filter(
         (f) => !(f.text === preset.text && f.emoji === preset.emoji),
       );
       setFavorites(newFavs);
       localStorage.setItem("slack-favorites", JSON.stringify(newFavs));
 
-      // Put it back in recents
       const newRecents = [preset, ...recentStatuses].slice(0, 5);
       setRecentStatuses(newRecents);
       localStorage.setItem("slack-recents", JSON.stringify(newRecents));
     } else {
-      // It's currently a recent, so we STAR it.
-      // Add to favorites
       const newFavs = [...favorites, preset];
       setFavorites(newFavs);
       localStorage.setItem("slack-favorites", JSON.stringify(newFavs));
 
-      // Remove from recents
       const newRecents = recentStatuses.filter(
         (r) => !(r.text === preset.text && r.emoji === preset.emoji),
       );
@@ -247,7 +267,6 @@ export default function StatusModal({
     </li>
   );
 
-  // Checks if the user has touched the inputs yet. If false, we show the "Clear Status" button.
   const isUnchanged =
     activeStatus &&
     statusText === activeStatus.text &&
@@ -273,12 +292,31 @@ export default function StatusModal({
         <form onSubmit={handleSubmit} className="flex flex-col max-h-[85vh]">
           <div className="px-5 pt-5 pb-3">
             <div className="flex items-center gap-2 bg-[#1A1D21] border border-gray-600 focus-within:border-[#1264A3] focus-within:ring-1 focus-within:ring-[#1264A3] rounded-lg p-1.5 transition-all">
-              <button
-                type="button"
-                className="p-1.5 hover:bg-gray-700 rounded text-xl focus:outline-none"
-              >
-                {statusEmoji}
-              </button>
+              {/* EMOJI PICKER CONTAINER */}
+              <div className="relative" ref={pickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="w-10 h-10 flex items-center justify-center hover:bg-gray-700 rounded text-xl focus:outline-none focus:ring-2 focus:ring-[#1264A3] transition-colors"
+                >
+                  {statusEmoji}
+                </button>
+
+                {showEmojiPicker && (
+                  <div className="absolute top-full mt-2 left-0 z-50 shadow-2xl">
+                    <EmojiPicker
+                      theme="dark"
+                      onEmojiClick={(emojiData) => {
+                        setStatusEmoji(emojiData.emoji);
+                        setShowEmojiPicker(false);
+                        inputRef.current?.focus(); // Return focus to input after picking
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              {/* END EMOJI PICKER */}
+
               <input
                 ref={inputRef}
                 type="text"
@@ -408,8 +446,6 @@ export default function StatusModal({
             <a href="#" className="text-[13px] text-[#36C5F0] hover:underline">
               Edit suggestions for New Workspace
             </a>
-
-            {/* Renders Clear Status if modifying an existing status, otherwise Cancel/Save */}
             {isUnchanged ? (
               <button
                 type="button"
@@ -430,11 +466,7 @@ export default function StatusModal({
                 <button
                   type="submit"
                   disabled={!statusText.trim()}
-                  className={`px-4 py-2 text-[13px] font-bold rounded transition-colors focus:ring-2 focus:ring-green-400 ${
-                    statusText.trim()
-                      ? "bg-[#007A5A] hover:bg-[#148567] text-white cursor-pointer"
-                      : "bg-gray-600 text-gray-400 cursor-not-allowed opacity-50"
-                  }`}
+                  className={`px-4 py-2 text-[13px] font-bold rounded transition-colors focus:ring-2 focus:ring-green-400 ${statusText.trim() ? "bg-[#007A5A] hover:bg-[#148567] text-white cursor-pointer" : "bg-gray-600 text-gray-400 cursor-not-allowed opacity-50"}`}
                 >
                   Save
                 </button>
