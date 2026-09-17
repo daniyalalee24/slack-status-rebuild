@@ -15,8 +15,8 @@ This is a frontend feature rebuild of Slack's custom status modal, built using R
 
 ## Start the local development server:
 
-```
-npm run dev
+```bash
+   npm run dev
 
 ```
 
