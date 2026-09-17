@@ -15,7 +15,10 @@ This is a frontend feature rebuild of Slack's custom status modal, built using R
 
 ## Start the local development server:
 
+```
 npm run dev
+
+```
 
 ## ⚖️ Comparison to the Original:
 
@@ -40,7 +43,3 @@ npm run dev
 3. Backdrop Dismissal: Implementing standard modal UX behavior, clicking the dark overlay outside the modal window safely dismisses it.
 
 4. Dynamic Time Parsing: Duration selections (e.g., "1 hour", "30 minutes") are dynamically calculated against the user's current system time and displayed within the input field as absolute expirations (e.g., "Until 10:30 PM"), exactly matching the original implementation.
-
-```
-
-```
