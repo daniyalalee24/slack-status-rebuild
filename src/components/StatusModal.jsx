@@ -17,6 +17,24 @@ const DefaultStatusIcon = () => (
   </svg>
 );
 
+// Helper function to calculate exact real-world expiration time
+export const getExpirationTime = (dur) => {
+  if (!dur || dur === "Don’t clear" || dur === "Choose a start and end time...")
+    return "";
+  if (dur === "Today") return "Until 11:59 PM";
+  if (dur === "This week") return "Until Sunday";
+  if (dur.includes("to")) return dur; // Handle custom date ranges
+
+  const now = new Date();
+  if (dur === "30 minutes") now.setMinutes(now.getMinutes() + 30);
+  else if (dur === "1 hour") now.setHours(now.getHours() + 1);
+  else if (dur === "4 hours") now.setHours(now.getHours() + 4);
+  else return dur;
+
+  // Added "en-US" to guarantee standard AM/PM formatting
+  return `Until ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+};
+
 export default function StatusModal({
   activeStatus,
   onSave,
@@ -292,12 +310,12 @@ export default function StatusModal({
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
-      onClick={onClose} // Closes modal when clicking the dark background
+      onClick={onClose}
     >
       <div
         className="bg-[#222529] text-gray-200 w-full max-w-[520px] rounded-xl shadow-2xl border border-gray-700 flex flex-col"
         role="dialog"
-        onClick={(e) => e.stopPropagation()} // Prevents clicks inside modal from closing it
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-5 pb-4 border-b border-gray-700">
           <h2 className="text-xl font-bold text-white">Set a status</h2>
@@ -339,29 +357,38 @@ export default function StatusModal({
                 )}
               </div>
 
+              {/* Added flex-1 and min-w-0 so long text shrinks nicely instead of pushing the time out */}
               <input
                 ref={inputRef}
                 type="text"
                 placeholder="What's your status?"
-                className="bg-transparent flex-1 outline-none text-white placeholder-gray-400 text-[15px]"
+                className="bg-transparent flex-1 min-w-0 outline-none text-white placeholder-gray-400 text-[15px]"
                 value={statusText}
                 onClick={() => setIsEditing(true)}
                 onChange={handleInputChange}
               />
+
               {statusText && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Full reset when clicking the 'X' in the input
-                    setStatusText("");
-                    setStatusEmoji("default");
-                    setDuration("Today");
-                    if (!isEditing) inputRef.current?.focus();
-                  }}
-                  className="bg-gray-600 hover:bg-gray-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-1"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-2 pr-1 shrink-0">
+                  {/* Removed the 'hidden sm:block' so it always shows regardless of screen size */}
+                  {getExpirationTime(duration) && (
+                    <span className="text-gray-400 text-[13px] whitespace-nowrap pointer-events-none select-none">
+                      {getExpirationTime(duration)}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusText("");
+                      setStatusEmoji("default");
+                      setDuration("Today");
+                      if (!isEditing) inputRef.current?.focus();
+                    }}
+                    className="bg-gray-600 hover:bg-gray-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
               )}
             </div>
           </div>
