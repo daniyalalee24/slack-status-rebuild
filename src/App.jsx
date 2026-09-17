@@ -1,17 +1,19 @@
 import { useState } from "react";
-import heroImg from "./assets/hero.png";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "./assets/vite.svg";
-import "./App.css";
+import StatusModal from "./components/StatusModal";
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-900 text-center">
-      <h1 className="text-4xl font-black text-emerald-400 drop-shadow-md">
-        Tailwind v4 is Live! 🚀
-      </h1>
+    <div className="min-h-screen bg-[#1A1D21] flex items-center justify-center">
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="px-4 py-2 bg-[#222529] border border-gray-600 text-gray-200 rounded-md hover:bg-gray-700 focus:ring-2 focus:ring-blue-500 transition-colors"
+      >
+        Update your status
+      </button>
+
+      {isModalOpen && <StatusModal onClose={() => setIsModalOpen(false)} />}
     </div>
   );
 }
